@@ -13,9 +13,12 @@ class Russia24Spider(Spider):
 
     start_urls = ['https://russia24.pro/news']
 
+    file_csv = f'{Path(__file__).parent.parent.parent}'\
+               f'/data/russia24_{datetime.now().strftime("%m-%d-%Y")}.csv'
+
     custom_settings = {
         'FEEDS': {
-            Path(f'data/russia24_{datetime.now().strftime("%m-%d-%Y")}.csv'): {
+            file_csv: {
                 'format': 'csv'
                 }
         },
@@ -24,8 +27,6 @@ class Russia24Spider(Spider):
     }
 
     def start_requests(self):
-        file = list(self.custom_settings.get('FEEDS').keys())[0]
-        self._get_saved_id(file)
         for url in self.start_urls:
             yield Request(url=url, callback=self.parse)
 
@@ -34,7 +35,8 @@ class Russia24Spider(Spider):
         for url in response.css('.r24_article .r24_body a::attr("href")').getall():
             news_id = url.split('/')[-2]
             # if not loaded news, then request by url
-            if news_id not in self.saved_id:
+            savedid = self._saved_id(self.file_csv)
+            if news_id not in savedid:
                 yield Request(url=url, callback=self.extract_data)
 
 
@@ -52,9 +54,10 @@ class Russia24Spider(Spider):
         }
 
 
-    def _get_saved_id(self, file):
+    def _saved_id(self, file):
+        '''return list of news id'''
         with open(file, 'r') as file:
-            self.saved_id = [i[0] for i in reader(file)]
+            return [i[0] for i in reader(file)]
 
 
     def save_page(self, response):
